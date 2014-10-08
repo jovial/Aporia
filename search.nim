@@ -8,7 +8,7 @@
 #
 
 import gtk2, glib2, gtksourceview, gdk2, pegs, re, strutils
-import utils, CustomStatusBar
+import utils, CustomStatusBar, math
 
 {.push callConv:cdecl.}
 
@@ -264,7 +264,8 @@ proc highlightAll*(w: var MainWin, term: string, forSearch: bool, mode = SearchC
       term: string 
       mode: TSearchEnum
       idleIdIsInvalid: ref bool
-      debugId: int
+      when not defined(release):
+        debugId: int
       findIter: iterator (buffer: PSourceBuffer, 
                           term: string, mode: TSearchEnum): 
                         tuple[startMatch, endMatch: TTextIter] {.closure.}
@@ -278,6 +279,8 @@ proc highlightAll*(w: var MainWin, term: string, forSearch: bool, mode = SearchC
   # doesn't clobber the current value in w.tabs[current].highlighted, i.e it 
   # just clobbers a stale reference
   idleParam.idleIdIsInvalid = new(bool)
+  when not defined(release):
+    idleParam.debugId = random(int.high)
   GCRef(idleParam) # Make sure `idleParam` is not deallocated by the GC.
   
   discard w.tabs[current].buffer.createTag(HighlightTagName,
@@ -296,13 +299,16 @@ proc highlightAll*(w: var MainWin, term: string, forSearch: bool, mode = SearchC
     # When this function is called the idleID is no longer valid as it signals
     # that the idle function has already been removed from the main loop
     idleParam.idleIdIsInvalid[] = true
+    echod("removing idleFunc, debugId: ", idleParam.debugId)
     GCUnref(idleParam)
     GC_fullCollect()
   
   let idleID =
       gIdleAddFull(GPRIORITY_DEFAULT_IDLE, idleHighlightAll,
                    cast[ptr TIdleParam](idleParam), idleHighlightAllRemove)
+  echod("adding idleFunc, debugId: ", idleParam.debugId)
   w.tabs[current].highlighted = newHighlightAll(term, forSearch, idleID, idleParam.idleIdIsInvalid)
+ 
 
 proc findText*(forward: bool) =
   # This proc gets called when the 'Next' or 'Prev' buttons
