@@ -299,14 +299,16 @@ proc highlightAll*(w: var MainWin, term: string, forSearch: bool, mode = SearchC
     # When this function is called the idleID is no longer valid as it signals
     # that the idle function has already been removed from the main loop
     idleParam.idleIdIsInvalid[] = true
-    echod("removing idleFunc, debugId: ", idleParam.debugId)
+    when not defined(release):
+      echod("removing idleFunc, debugId: ", idleParam.debugId)
     GCUnref(idleParam)
     GC_fullCollect()
   
   let idleID =
       gIdleAddFull(GPRIORITY_DEFAULT_IDLE, idleHighlightAll,
                    cast[ptr TIdleParam](idleParam), idleHighlightAllRemove)
-  echod("adding idleFunc, debugId: ", idleParam.debugId)
+  when not defined(release):
+    echod("adding idleFunc, debugId: ", idleParam.debugId)
   w.tabs[current].highlighted = newHighlightAll(term, forSearch, idleID, idleParam.idleIdIsInvalid)
  
 
